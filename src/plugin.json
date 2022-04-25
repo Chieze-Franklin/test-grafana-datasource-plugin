@@ -4,7 +4,10 @@
   "name": "my-grafana-plugin",
   "id": "main-org-my-grafana-plugin",
   "metrics": true,
-  "routes": [],
+  "routes": [{
+    "path": "calyptia",
+    "url": "https://cloud-api.calyptia.com"
+  }],
   "info": {
     "description": "My first Grafana data source plugin",
     "author": {
