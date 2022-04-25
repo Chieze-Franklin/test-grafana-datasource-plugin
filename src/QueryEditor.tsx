@@ -16,34 +16,24 @@ export class QueryEditor extends PureComponent<Props> {
     onChange({ ...query, queryText: event.target.value });
   };
 
-  onConstantChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, constant: parseFloat(event.target.value) });
-    // executes the query
-    onRunQuery();
+  onProjectIdChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, projectId: event.target.value });
   };
 
-  onFrequencyChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, frequency: parseFloat(event.target.value) });
-    // executes the query
-    onRunQuery();
-  };
+  // onConstantChange = (event: ChangeEvent<HTMLInputElement>) => {
+  //   const { onChange, query, onRunQuery } = this.props;
+  //   onChange({ ...query, constant: parseFloat(event.target.value) });
+  //   // executes the query
+  //   onRunQuery();
+  // };
 
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { queryText, constant, frequency } = query;
+    const { queryText, projectId } = query;
 
     return (
       <div className="gf-form">
-        <FormField
-          width={4}
-          value={constant}
-          onChange={this.onConstantChange}
-          label="Constant"
-          type="number"
-          step="0.1"
-        />
         <FormField
           labelWidth={8}
           value={queryText || ''}
@@ -51,7 +41,13 @@ export class QueryEditor extends PureComponent<Props> {
           label="Query Text"
           tooltip="Not used yet"
         />
-        <FormField labelWidth={4} value={frequency} onChange={this.onFrequencyChange} label="Frequency" type="number" />
+        <FormField
+          labelWidth={8}
+          value={projectId || ''}
+          onChange={this.onProjectIdChange}
+          label="Project ID"
+          tooltip="Enter the project ID"
+        />
       </div>
     );
   }

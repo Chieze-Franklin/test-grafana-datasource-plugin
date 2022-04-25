@@ -1,57 +1,67 @@
 import React, { ChangeEvent, PureComponent } from 'react';
-import { LegacyForms } from '@grafana/ui';
-import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { MyDataSourceOptions, MySecureJsonData } from './types';
+import { LegacyForms, Select } from '@grafana/ui';
+import { DataSourcePluginOptionsEditorProps, SelectableValue } from '@grafana/data';
+import { MetricOwnerType, MyDataSourceOptions, MySecureJsonData } from './types';
 
 const { SecretFormField, FormField } = LegacyForms;
 
 interface Props extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
 
-interface State {}
+interface State {
+  // metricOwnerType: MetricOwnerType;
+}
 
 export class ConfigEditor extends PureComponent<Props, State> {
-  onPathChange = (event: ChangeEvent<HTMLInputElement>) => {
+  metricOwnerTypeOptions: Array<SelectableValue<MetricOwnerType>> = [
+    { label: 'Default', value: undefined, description: 'get metrics from a default owner' },
+    { label: 'Agent', value: 'agent', description: 'get metrics from an agent' },
+    { label: 'Aggregator', value: 'aggregator', description: 'get metrics from an aggregator' },
+    { label: 'Pipeline', value: 'pipeline', description: 'get metrics from an pipeline' },
+    { label: 'Project', value: 'project', description: 'get metrics from an project' },
+  ];
+
+  onMetricOwnerIdChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     const jsonData = {
       ...options.jsonData,
-      path: event.target.value,
+      metricOwnerId: event.target.value,
+    };
+    onOptionsChange({ ...options, jsonData });
+  };
+
+  onMetricOwnerTypeChange = (value: SelectableValue<MetricOwnerType>) => {
+    const { onOptionsChange, options } = this.props;
+    const jsonData = {
+      ...options.jsonData,
+      metricOwnerType: value.value || 'project',
     };
     onOptionsChange({ ...options, jsonData });
   };
 
   // Secure field (only sent to the backend)
-  onAPIKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onAccessTokenChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     onOptionsChange({
       ...options,
       secureJsonData: {
-        apiKey: event.target.value,
+        accessToken: event.target.value,
       },
     });
   };
 
-  onResetAPIKey = () => {
+  onResetAccessToken = () => {
     const { onOptionsChange, options } = this.props;
     onOptionsChange({
       ...options,
       secureJsonFields: {
         ...options.secureJsonFields,
-        apiKey: false,
+        accessToken: false,
       },
       secureJsonData: {
         ...options.secureJsonData,
-        apiKey: '',
+        accessToken: '',
       },
     });
-  };
-
-  onResolutionChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onOptionsChange, options } = this.props;
-    const jsonData = {
-      ...options.jsonData,
-      resolution: parseFloat(event.target.value),
-    };
-    onOptionsChange({ ...options, jsonData });
   };
 
   render() {
@@ -62,38 +72,38 @@ export class ConfigEditor extends PureComponent<Props, State> {
     return (
       <div className="gf-form-group">
         <div className="gf-form">
+          <Select
+            options={this.metricOwnerTypeOptions}
+            value={jsonData.metricOwnerType || ''}
+            onChange={this.onMetricOwnerTypeChange}
+            placeholder="the id of the resource that owns the metrics"
+          />
+        </div>
+
+        <div className="gf-form">
           <FormField
-            label="Path"
+            label="Metric Owner ID"
             labelWidth={6}
             inputWidth={20}
-            onChange={this.onPathChange}
-            value={jsonData.path || ''}
-            placeholder="json field returned to frontend"
+            onChange={this.onMetricOwnerIdChange}
+            value={jsonData.metricOwnerId || ''}
+            placeholder="the id of the resource that owns the metrics"
           />
         </div>
 
         <div className="gf-form-inline">
           <div className="gf-form">
             <SecretFormField
-              isConfigured={(secureJsonFields && secureJsonFields.apiKey) as boolean}
-              value={secureJsonData.apiKey || ''}
-              label="API Key"
+              isConfigured={(secureJsonFields && secureJsonFields.accessToken) as boolean}
+              value={secureJsonData.accessToken || ''}
+              label="Access Token"
               placeholder="secure json field (backend only)"
               labelWidth={6}
               inputWidth={20}
-              onReset={this.onResetAPIKey}
-              onChange={this.onAPIKeyChange}
+              onReset={this.onResetAccessToken}
+              onChange={this.onAccessTokenChange}
             />
           </div>
-        </div>
-
-        <div className="gf-form">
-          <FormField
-            label="Resolution"
-            onChange={this.onResolutionChange}
-            value={jsonData.resolution || ''}
-            placeholder="Enter a number"
-          />
         </div>
       </div>
     );
