@@ -1,18 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
   "type": "datasource",
-  "name": "my-grafana-plugin",
-  "id": "main-org-my-grafana-plugin",
+  "name": "Calyptia Metrics",
+  "id": "calyptia-metrics-datasource",
   "metrics": true,
   "routes": [{
     "path": "calyptia",
     "url": "https://cloud-api.calyptia.com"
   }],
   "info": {
-    "description": "My first Grafana data source plugin",
+    "description": "Calyptia metrics datasource",
     "author": {
-      "name": "Main Org",
-      "url": "https://www.mainorg.com"
+      "name": "Calyptia",
+      "url": "https://calyptia.com"
     },
     "keywords": ["data source"],
     "logos": {
@@ -22,15 +22,15 @@
     "links": [
       {
         "name": "Website",
-        "url": "https://github.com/grafana/grafana-starter-datasource"
+        "url": "https://github.com/Chieze-Franklin/test-grafana-datasource-plugin"
       },
       {
         "name": "License",
-        "url": "https://github.com/grafana/grafana-starter-datasource/blob/master/LICENSE"
+        "url": "https://github.com/Chieze-Franklin/test-grafana-datasource-plugin/blob/main/LICENSE"
       }
     ],
     "screenshots": [],
-    "version": "%VERSION%",
+    "version": "0.0.1",
     "updated": "%TODAY%"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 {
-  "name": "main-org-my-grafana-plugin",
-  "version": "1.0.0",
+  "name": "calyptia-metrics-datasource",
+  "version": "0.0.1",
   "description": "My first Grafana data source plugin",
   "scripts": {
     "build": "grafana-toolkit plugin:build",
