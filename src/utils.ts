@@ -1,147 +1,33 @@
-export function sampleProjectData() {
-  return {
-    measurements: {
-      fluentbit_input: {
-        totals: { bytes_total: 151966455, records_total: 36295 },
-        plugins: {
-          'fluentbit_metrics.0': {
-            metrics: {
-              bytes_total: [
-                { time: '2022-04-05T20:55:00Z', value: 7980351 },
-                { time: '2022-04-05T20:55:30Z', value: 7984538 },
-                { time: '2022-04-05T20:56:00Z', value: 7988725 },
-                { time: '2022-04-05T20:56:30Z', value: 7992912 },
-                { time: '2022-04-05T20:57:00Z', value: 7997099 },
-                { time: '2022-04-05T20:57:30Z', value: 8001286 },
-                { time: '2022-04-05T20:58:00Z', value: 8005473 },
-                { time: '2022-04-05T20:58:30Z', value: 8009660 },
-                { time: '2022-04-05T20:59:00Z', value: 8013847 },
-                { time: '2022-04-05T20:59:30Z', value: 8018034 },
-                { time: '2022-04-05T20:59:37.982057729Z', value: null },
-              ],
-              records_total: [
-                { time: '2022-04-05T20:55:00Z', value: 1906 },
-                { time: '2022-04-05T20:55:30Z', value: 1907 },
-                { time: '2022-04-05T20:56:00Z', value: 1908 },
-                { time: '2022-04-05T20:56:30Z', value: 1909 },
-                { time: '2022-04-05T20:57:00Z', value: 1910 },
-                { time: '2022-04-05T20:57:30Z', value: 1911 },
-                { time: '2022-04-05T20:58:00Z', value: 1912 },
-                { time: '2022-04-05T20:58:30Z', value: 1913 },
-                { time: '2022-04-05T20:59:00Z', value: 1914 },
-                { time: '2022-04-05T20:59:30Z', value: 1915 },
-                { time: '2022-04-05T20:59:37.982057729Z', value: null },
-              ],
-            },
-          },
-          'fluentbit_metrics.1': {
-            metrics: {
-              bytes_total: [
-                { time: '2022-04-05T20:55:00Z', value: 7980422 },
-                { time: '2022-04-05T20:55:30Z', value: 7984609 },
-                { time: '2022-04-05T20:56:00Z', value: 7988796 },
-                { time: '2022-04-05T20:56:30Z', value: 7992983 },
-                { time: '2022-04-05T20:57:00Z', value: 7997170 },
-                { time: '2022-04-05T20:57:30Z', value: 8001357 },
-                { time: '2022-04-05T20:58:00Z', value: 8005544 },
-                { time: '2022-04-05T20:58:30Z', value: 8009731 },
-                { time: '2022-04-05T20:59:00Z', value: 8013918 },
-                { time: '2022-04-05T20:59:30Z', value: null },
-                { time: '2022-04-05T20:59:37.982057729Z', value: null },
-              ],
-              records_total: [
-                { time: '2022-04-05T20:55:00Z', value: 1906 },
-                { time: '2022-04-05T20:55:30Z', value: 1907 },
-                { time: '2022-04-05T20:56:00Z', value: 1908 },
-                { time: '2022-04-05T20:56:30Z', value: 1909 },
-                { time: '2022-04-05T20:57:00Z', value: 1910 },
-                { time: '2022-04-05T20:57:30Z', value: 1911 },
-                { time: '2022-04-05T20:58:00Z', value: 1912 },
-                { time: '2022-04-05T20:58:30Z', value: 1913 },
-                { time: '2022-04-05T20:59:00Z', value: 1914 },
-                { time: '2022-04-05T20:59:30Z', value: null },
-                { time: '2022-04-05T20:59:37.982057729Z', value: null },
-              ],
-            },
-          },
-        },
+import { getBackendSrv } from '@grafana/runtime';
+
+let proxyUrl: string | undefined = '';
+
+export async function fetchApiData(url: string) {
+  const result = await getBackendSrv()
+    .datasourceRequest({
+      method: 'GET',
+      url,
+      headers: {
+        Accept: 'application/json',
+        Authorization:
+          'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImxHRUpobXVFU1BYbFBocDNCdWI5dyJ9.eyJodHRwczovL2Nsb3VkLmNhbHlwdGlhLmNvbS9lbWFpbCI6ImZyYW5rbGluQGNhbHlwdGlhLmNvbSIsImh0dHBzOi8vY2xvdWQuY2FseXB0aWEuY29tL2VtYWlsX3ZlcmlmaWVkIjp0cnVlLCJodHRwczovL2Nsb3VkLmNhbHlwdGlhLmNvbS9mYW1pbHlfbmFtZSI6IkNoaWV6ZSIsImh0dHBzOi8vY2xvdWQuY2FseXB0aWEuY29tL2dpdmVuX25hbWUiOiJGcmFua2xpbiAiLCJodHRwczovL2Nsb3VkLmNhbHlwdGlhLmNvbS9uYW1lIjoiRnJhbmtsaW4gQ2hpZXplIiwiaHR0cHM6Ly9jbG91ZC5jYWx5cHRpYS5jb20vbmlja25hbWUiOiJmcmFua2xpbiIsImh0dHBzOi8vY2xvdWQuY2FseXB0aWEuY29tL3BpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS0vQU9oMTRHaUwzLVRGUnQ2RG8zMVlnNXlJc1hXdzJ4cTJXVEVEb3BsMTduajc9czk2LWMiLCJpc3MiOiJodHRwczovL3Nzby5jYWx5cHRpYS5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDM2OTk4OTQ1MTI5OTE3MjY1OTQiLCJhdWQiOlsiaHR0cHM6Ly9jb25maWcuY2FseXB0aWEuY29tIiwiaHR0cHM6Ly9kZXYtMTVzbWpoLWUudXMuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY1MDkwODMzOCwiZXhwIjoxNjUxNDY4MzM4LCJhenAiOiJoT0R0dkMzb09RVndUOElMeG9RRnY1ZVJ0Z0Vsc2RGaCIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgb2ZmbGluZV9hY2Nlc3MifQ.CZ3rMG9L6tjzZCjq92MIrRxCNXzrNfr0BP_0I-NU2p25qfvp4GiUMnqbLvlLEc50xissREuHl7jvL3oGMZpGizWWWzmcv0s68UnPazmKfG0eyLIR2Q-BDNjRKPAomBx4mYqxvVjUVPKIDg_ibi7SY4rR_UDIJLCKvhXfBw8l46zoLe302OPaDAbYLNxXSnHEo-GH5r5N_B-_p8Omh74xE5sHrX5TZ-z_MRrgFKiMp5Twk7DJXPkMPnv8wIbagCI4gD7cjuMn7CQLv-XOpSCx7ax-dhu-LpkwfBCGe_4ygnSjCEOvH8aqM_Rho6IkZNjlcRb2STHJ_u3TFyWk4SLn0g',
       },
-      fluentbit_output: {
-        totals: {
-          proc_bytes_total: 143835372,
-          proc_records_total: 34353,
-          retried_records_total: 869,
-          retries_total: 869,
-        },
-        plugins: {
-          'calyptia.0': {
-            metrics: {
-              proc_bytes_total: [
-                { time: '2022-04-05T20:55:00Z', value: 15948212 },
-                { time: '2022-04-05T20:55:30Z', value: 15956586 },
-                { time: '2022-04-05T20:56:00Z', value: null },
-                { time: '2022-04-05T20:56:30Z', value: 15969147 },
-                { time: '2022-04-05T20:57:00Z', value: 15981708 },
-                { time: '2022-04-05T20:57:30Z', value: 15990082 },
-                { time: '2022-04-05T20:58:00Z', value: null },
-                { time: '2022-04-05T20:58:30Z', value: 16002643 },
-                { time: '2022-04-05T20:59:00Z', value: 16015204 },
-                { time: '2022-04-05T20:59:30Z', value: null },
-                { time: '2022-04-05T20:59:38.310284689Z', value: null },
-              ],
-              proc_records_total: [
-                { time: '2022-04-05T20:55:00Z', value: 3809 },
-                { time: '2022-04-05T20:55:30Z', value: 3811 },
-                { time: '2022-04-05T20:56:00Z', value: null },
-                { time: '2022-04-05T20:56:30Z', value: 3814 },
-                { time: '2022-04-05T20:57:00Z', value: 3817 },
-                { time: '2022-04-05T20:57:30Z', value: 3819 },
-                { time: '2022-04-05T20:58:00Z', value: null },
-                { time: '2022-04-05T20:58:30Z', value: 3822 },
-                { time: '2022-04-05T20:59:00Z', value: 3825 },
-                { time: '2022-04-05T20:59:30Z', value: null },
-                { time: '2022-04-05T20:59:38.310284689Z', value: null },
-              ],
-              retried_records_total: [
-                { time: '2022-04-05T20:55:00Z', value: null },
-                { time: '2022-04-05T20:55:30Z', value: null },
-                { time: '2022-04-05T20:56:00Z', value: 434 },
-                { time: '2022-04-05T20:56:30Z', value: null },
-                { time: '2022-04-05T20:57:00Z', value: null },
-                { time: '2022-04-05T20:57:30Z', value: null },
-                { time: '2022-04-05T20:58:00Z', value: 435 },
-                { time: '2022-04-05T20:58:30Z', value: null },
-                { time: '2022-04-05T20:59:00Z', value: null },
-                { time: '2022-04-05T20:59:30Z', value: null },
-                { time: '2022-04-05T20:59:38.310284689Z', value: null },
-              ],
-              retries_total: [
-                { time: '2022-04-05T20:55:00Z', value: null },
-                { time: '2022-04-05T20:55:30Z', value: null },
-                { time: '2022-04-05T20:56:00Z', value: 434 },
-                { time: '2022-04-05T20:56:30Z', value: null },
-                { time: '2022-04-05T20:57:00Z', value: null },
-                { time: '2022-04-05T20:57:30Z', value: null },
-                { time: '2022-04-05T20:58:00Z', value: 435 },
-                { time: '2022-04-05T20:58:30Z', value: null },
-                { time: '2022-04-05T20:59:00Z', value: null },
-                { time: '2022-04-05T20:59:30Z', value: null },
-                { time: '2022-04-05T20:59:38.310284689Z', value: null },
-              ],
-            },
-          },
-        },
-      },
-    },
-    topPlugins: {
-      'calyptia.0': {
-        proc_bytes_total: 15981708,
-        proc_records_total: 3817,
-        retried_records_total: 434.5,
-        retries_total: 434.5,
-      },
-      'fluentbit_metrics.0': { bytes_total: 7999192.5, records_total: 1910.5 },
-      'fluentbit_metrics.1': { bytes_total: 7997170, records_total: 1910 },
-    },
-  };
+    })
+    .catch((e) => {
+      console.log('>>>>>>>>>>>>>>>>>>>>>>error in dorequest');
+      console.log(e);
+    });
+  return result;
+}
+
+export function getProxyUrl() {
+  return proxyUrl;
+}
+
+export function setProxyUrl(url?: string) {
+  proxyUrl = url;
+}
+
+export function makePhrase(word: string) {
+  return word.replace(/_/g, ' ').replace(/\./g, ' ');
 }

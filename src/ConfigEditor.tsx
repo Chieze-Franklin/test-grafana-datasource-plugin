@@ -1,9 +1,9 @@
 import React, { ChangeEvent, PureComponent } from 'react';
-import { LegacyForms, Select } from '@grafana/ui';
+// import { LegacyForms, Select } from '@grafana/ui';
 import { DataSourcePluginOptionsEditorProps, SelectableValue } from '@grafana/data';
-import { MetricOwnerType, MyDataSourceOptions, MySecureJsonData } from './types';
+import { MetricType, MyDataSourceOptions } from './types';
 
-const { SecretFormField, FormField } = LegacyForms;
+// const { FormField } = LegacyForms;
 
 interface Props extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
 
@@ -12,7 +12,7 @@ interface State {
 }
 
 export class ConfigEditor extends PureComponent<Props, State> {
-  metricOwnerTypeOptions: Array<SelectableValue<MetricOwnerType>> = [
+  metricOwnerTypeOptions: Array<SelectableValue<MetricType>> = [
     { label: 'Default', value: undefined, description: 'get metrics from a default owner' },
     { label: 'Agent', value: 'agent', description: 'get metrics from an agent' },
     { label: 'Aggregator', value: 'aggregator', description: 'get metrics from an aggregator' },
@@ -29,7 +29,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
     onOptionsChange({ ...options, jsonData });
   };
 
-  onMetricOwnerTypeChange = (value: SelectableValue<MetricOwnerType>) => {
+  onMetricOwnerTypeChange = (value: SelectableValue<MetricType>) => {
     const { onOptionsChange, options } = this.props;
     const jsonData = {
       ...options.jsonData,
@@ -65,13 +65,13 @@ export class ConfigEditor extends PureComponent<Props, State> {
   };
 
   render() {
-    const { options } = this.props;
-    const { jsonData, secureJsonFields } = options;
-    const secureJsonData = (options.secureJsonData || {}) as MySecureJsonData;
+    // const { options } = this.props;
+    // const { jsonData /*secureJsonFields*/ } = options;
+    // const secureJsonData = (options.secureJsonData || {}) as MySecureJsonData;
 
     return (
       <div className="gf-form-group">
-        <div className="gf-form">
+        {/* <div className="gf-form">
           <Select
             options={this.metricOwnerTypeOptions}
             value={jsonData.metricOwnerType || ''}
@@ -104,7 +104,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
               onChange={this.onAccessTokenChange}
             />
           </div>
-        </div>
+        </div> */}
       </div>
     );
   }
