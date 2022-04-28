@@ -1,27 +1,35 @@
-import { DataQuery, DataSourceJsonData } from '@grafana/data';
+import { DataQuery, DataSourceJsonData, MutableDataFrame } from '@grafana/data';
 
 export interface MyQuery extends DataQuery {
-  queryText?: string;
-  projectId: string;
+  agent?: string;
+  aggregator?: string;
+  pipeline?: string;
+  metric?: string;
+  metricType?: MetricType;
+  project?: string;
+  plugin?: string;
+
+  // ----- query params ------
+  duration: number; // duration in hours
+  interval: number; // interval in hours
+
+  // ----- query result ------
+  frame?: MutableDataFrame<any>;
 }
 
 export const defaultQuery: Partial<MyQuery> = {
-  // projectId: "dc653b95-a3e1-4fd3-a106-018eafb41266",
+  duration: 24 * 7, // 7 days
+  interval: 1, // 1 hour
 };
 
-export type MetricOwnerType = 'agent' | 'aggregator' | 'pipeline' | 'project';
+export type MetricType = 'agent' | 'aggregator' | 'pipeline' | 'project';
 
 /**
  * These are options configured for each DataSource instance
  */
-export interface MyDataSourceOptions extends DataSourceJsonData {
-  metricOwnerId: string;
-  metricOwnerType: MetricOwnerType;
-}
+export interface MyDataSourceOptions extends DataSourceJsonData {}
 
 /**
  * Value that is used in the backend, but never sent over HTTP to the frontend
  */
-export interface MySecureJsonData {
-  accessToken: string;
-}
+export interface MySecureJsonData {}
