@@ -18,7 +18,7 @@ export function createFrameSetsFromAggregatorMetrics(data: AggregatorMetrics, re
         } else {
           const frame = new MutableDataFrame({
             refId: refId,
-            name: `${pluginsKey}.${metricsKey}`,
+            name: `${pluginsKey}.${metricsKey} (${refId})`,
             fields: [
               { name: 'time', type: FieldType.time },
               { name: 'value', type: FieldType.number },

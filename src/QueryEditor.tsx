@@ -6,10 +6,11 @@ import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MetricType, MyDataSourceOptions, MyQuery } from './types';
 import { fetchApiData, getProxyUrl, getQueryDuration, makePhrase, setQueryDuration } from 'utils';
-import { createFrameSetsFromProjectMetrics } from 'metrics/utils/project-metrics';
+import { createFrameSetsFromAgentOrProjectMetrics } from 'metrics/utils/project-metrics';
 import { DataFrameSet } from 'metrics/types/DataFrameSet';
 import { AggregatorMetrics } from 'metrics/types/AggregatorMetrics';
 import { createFrameSetsFromAggregatorMetrics } from 'metrics/utils/aggregator-metrics';
+import { AgentMetrics } from 'metrics/types/AgentMetrics';
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
@@ -19,9 +20,11 @@ export class QueryEditor extends PureComponent<Props> {
   metricTypeOptions: Array<SelectableValue<MetricType>> = [
     { label: 'Agent', value: 'agent', description: 'get metrics from an agent' },
     { label: 'Aggregator', value: 'aggregator', description: 'get metrics from an aggregator' },
-    { label: 'Pipeline', value: 'pipeline', description: 'get metrics from an pipeline' },
-    { label: 'Project', value: 'project', description: 'get metrics from an project' },
+    { label: 'Pipeline', value: 'pipeline', description: 'get metrics from a pipeline' },
+    { label: 'Project', value: 'project', description: 'get metrics from a project' },
   ];
+
+  agentOptions: Array<SelectableValue<string>> = [];
 
   aggregatorOptions: Array<SelectableValue<string>> = [];
 
@@ -34,6 +37,33 @@ export class QueryEditor extends PureComponent<Props> {
   loadMetricTypeOptions = (): Promise<Array<SelectableValue<MetricType>>> =>
     new Promise((res) => res(this.metricTypeOptions));
 
+  loadAgentOptions = (project: string): Promise<Array<SelectableValue<string>>> => {
+    return new Promise((res) => {
+      return fetchApiData(`${getProxyUrl()}/calyptia/v1/projects/${project}/agents`)
+        .then((response) =>
+          res(
+            // @ts-ignore
+            response.data
+              // @ts-ignore
+              .map((item) => {
+                this.agentOptions.push({
+                  label: `${item.name} ${item.version}`,
+                  value: item.id,
+                });
+                return {
+                  label: `${item.name} ${item.version}`,
+                  value: item.id,
+                };
+              })
+          )
+        )
+        .catch((e) => {
+          console.log('>>>>>>>>>>>>>>>>>>>>>>error in loadAgentOptions');
+          console.log(e);
+        });
+    });
+  };
+
   loadAggregatorOptions = (project: string): Promise<Array<SelectableValue<string>>> => {
     return new Promise((res) => {
       return fetchApiData(`${getProxyUrl()}/calyptia/v1/projects/${project}/aggregators`)
@@ -44,11 +74,11 @@ export class QueryEditor extends PureComponent<Props> {
               // @ts-ignore
               .map((item) => {
                 this.aggregatorOptions.push({
-                  label: `${item.name} ${item.version} (${item.id})`,
+                  label: `${item.name} ${item.version}`,
                   value: item.id,
                 });
                 return {
-                  label: `${item.name} ${item.version} (${item.id})`,
+                  label: `${item.name} ${item.version}`,
                   value: item.id,
                 };
               })
@@ -73,7 +103,9 @@ export class QueryEditor extends PureComponent<Props> {
       }
 
       let url = '';
-      if (metricType === 'aggregator') {
+      if (metricType === 'agent') {
+        url = `${getProxyUrl()}/calyptia/v1/agents/${ownerId}/metrics?start=-${getQueryDuration()}h&interval=1h`;
+      } else if (metricType === 'aggregator') {
         url = `${getProxyUrl()}/calyptia/v1/aggregator_metrics/${ownerId}?start=-${getQueryDuration()}h&interval=1h`;
       } else if (metricType === 'project') {
         url = `${getProxyUrl()}/calyptia/v1/projects/${ownerId}/metrics?start=-${getQueryDuration()}h&interval=1h`;
@@ -81,7 +113,12 @@ export class QueryEditor extends PureComponent<Props> {
 
       return fetchApiData(url)
         .then((response) => {
-          if (metricType === 'aggregator') {
+          if (metricType === 'agent') {
+            // @ts-ignore
+            const data: AgentMetrics = response.data;
+            const frameSets = createFrameSetsFromAgentOrProjectMetrics(data, refId);
+            this.frameSets = frameSets;
+          } else if (metricType === 'aggregator') {
             // @ts-ignore
             const data: AggregatorMetrics = response.data;
             const frameSets = createFrameSetsFromAggregatorMetrics(data, refId);
@@ -89,7 +126,7 @@ export class QueryEditor extends PureComponent<Props> {
           } else if (metricType === 'project') {
             // @ts-ignore
             const data: ProjectMetrics = response.data;
-            const frameSets = createFrameSetsFromProjectMetrics(data, refId);
+            const frameSets = createFrameSetsFromAgentOrProjectMetrics(data, refId);
             this.frameSets = frameSets;
           }
 
@@ -166,6 +203,12 @@ export class QueryEditor extends PureComponent<Props> {
     this.projectOptions = [];
   };
 
+  onAgentChange = (value: SelectableValue<string>) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, agent: value.value, plugin: undefined, metric: undefined });
+    this.pluginsOptions = [];
+  };
+
   onAggregatorChange = (value: SelectableValue<string>) => {
     const { onChange, query } = this.props;
     onChange({ ...query, aggregator: value.value, plugin: undefined, metric: undefined });
@@ -193,6 +236,7 @@ export class QueryEditor extends PureComponent<Props> {
       plugin: undefined,
       metric: undefined,
     });
+    this.agentOptions = [];
     this.aggregatorOptions = [];
     this.pluginsOptions = [];
   };
@@ -210,7 +254,7 @@ export class QueryEditor extends PureComponent<Props> {
 
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { metricType, aggregator, metric, project, plugin } = query;
+    const { metricType, agent, aggregator, metric, project, plugin } = query;
     const { refId } = query;
 
     const { range } = this.props;
@@ -222,7 +266,9 @@ export class QueryEditor extends PureComponent<Props> {
     duration = duration / (1000 * 60 * 60);
     duration = Math.ceil(duration);
     if (getQueryDuration() !== duration) {
-      if (metricType === 'aggregator' && aggregator) {
+      if (metricType === 'agent' && agent) {
+        this.loadPluginOptions(agent, 'agent', { refId, refresh: true });
+      } else if (metricType === 'aggregator' && aggregator) {
         this.loadPluginOptions(aggregator, 'aggregator', { refId, refresh: true });
       } else if (metricType === 'project' && project) {
         this.loadPluginOptions(project, 'project', { refId, refresh: true });
@@ -269,6 +315,37 @@ export class QueryEditor extends PureComponent<Props> {
                 value={project}
                 loadOptions={() => this.loadProjectOptions()}
                 onChange={this.onProjectChange}
+                inputMinWidth={300}
+              />
+            )}
+
+            {metricType === 'agent' && project && (
+              <SegmentAsync
+                Component={
+                  agent ? (
+                    <CustomLabelComponent value={this.agentOptions.find((ag) => ag.value === agent)?.label} />
+                  ) : (
+                    <AddButton label="Agent" />
+                  )
+                }
+                value={agent}
+                loadOptions={() => this.loadAgentOptions(project)}
+                onChange={this.onAgentChange}
+                inputMinWidth={300}
+              />
+            )}
+            {metricType === 'agent' && project && agent && (
+              <SegmentAsync
+                Component={
+                  plugin ? (
+                    <CustomLabelComponent value={this.pluginsOptions.find((plug) => plug.value === plugin)?.label} />
+                  ) : (
+                    <AddButton label="Plugin" />
+                  )
+                }
+                value={plugin}
+                loadOptions={() => this.loadPluginOptions(agent, 'agent', { refId })}
+                onChange={this.onPluginChange}
                 inputMinWidth={300}
               />
             )}
