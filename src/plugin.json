@@ -6,7 +6,14 @@
   "metrics": true,
   "routes": [{
     "path": "calyptia",
-    "url": "https://cloud-api.calyptia.com"
+    "url": "https://cloud-api.calyptia.com",
+    "headers": [{
+      "name": "Accept",
+      "content": "application/json"
+    },{
+      "name": "Authorization",
+      "content": "Bearer {{ .SecureJsonData.accessToken }}"
+    }]
   }],
   "info": {
     "description": "Calyptia metrics datasource",

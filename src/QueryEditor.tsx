@@ -5,7 +5,7 @@ import { Icon, LegacyForms, SegmentAsync, SegmentSection } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MetricType, MyDataSourceOptions, MyQuery } from './types';
-import { fetchApiData, getProxyUrl, makePhrase } from 'utils';
+import { fetchApiData, getProxyUrl, getQueryDuration, makePhrase } from 'utils';
 import { createFrameSetsFromProjectMetrics } from 'metrics/utils/project-metrics';
 import { DataFrameSet } from 'metrics/types/DataFrameSet';
 
@@ -79,18 +79,15 @@ export class QueryEditor extends PureComponent<Props> {
     });
   };
 
-  loadProjectPluginOptions = (
-    project: string,
-    query: { duration: number; interval: number; refId: string }
-  ): Promise<Array<SelectableValue<string>>> => {
-    const { duration, interval, refId } = query;
+  loadProjectPluginOptions = (project: string, query: { refId: string }): Promise<Array<SelectableValue<string>>> => {
+    const { refId } = query;
     return new Promise((res) => {
       if (this.pluginsOptions && this.pluginsOptions.length) {
         return res(this.pluginsOptions);
       }
 
       return fetchApiData(
-        `${getProxyUrl()}/calyptia/v1/projects/${project}/metrics?start=-${duration}h&interval=${interval}h`
+        `${getProxyUrl()}/calyptia/v1/projects/${project}/metrics?start=-${getQueryDuration()}h&interval=1h`
       )
         .then((response) => {
           // @ts-ignore
@@ -164,7 +161,7 @@ export class QueryEditor extends PureComponent<Props> {
   render() {
     const query = defaults(this.props.query, defaultQuery);
     const { metricType, metric, project, plugin } = query;
-    const { duration, interval, refId } = query;
+    const { refId } = query;
 
     const AddButton = (
       <a className="gf-form-label query-part">
@@ -225,7 +222,7 @@ export class QueryEditor extends PureComponent<Props> {
                   )
                 }
                 value={plugin}
-                loadOptions={() => this.loadProjectPluginOptions(project, { duration, interval, refId })}
+                loadOptions={() => this.loadProjectPluginOptions(project, { refId })}
                 onChange={this.onPluginChange}
                 inputMinWidth={300}
               />
