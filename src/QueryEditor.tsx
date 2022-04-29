@@ -1,17 +1,15 @@
 import defaults from 'lodash/defaults';
 
 import React, { PureComponent } from 'react';
-import { Icon, LegacyForms, SegmentAsync, SegmentSection } from '@grafana/ui';
+import { Icon, SegmentAsync, SegmentSection } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MetricType, MyDataSourceOptions, MyQuery } from './types';
-import { fetchApiData, getProxyUrl, getQueryDuration, makePhrase } from 'utils';
+import { fetchApiData, getProxyUrl, getQueryDuration, makePhrase, setQueryDuration } from 'utils';
 import { createFrameSetsFromProjectMetrics } from 'metrics/utils/project-metrics';
 import { DataFrameSet } from 'metrics/types/DataFrameSet';
-
-const {
-  /* FormField*/
-} = LegacyForms;
+import { AggregatorMetrics } from 'metrics/types/AggregatorMetrics';
+import { createFrameSetsFromAggregatorMetrics } from 'metrics/utils/aggregator-metrics';
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
@@ -25,6 +23,8 @@ export class QueryEditor extends PureComponent<Props> {
     { label: 'Project', value: 'project', description: 'get metrics from an project' },
   ];
 
+  aggregatorOptions: Array<SelectableValue<string>> = [];
+
   metricsOptions: Array<SelectableValue<string>> = [];
 
   projectOptions: Array<SelectableValue<string>> = [];
@@ -33,6 +33,87 @@ export class QueryEditor extends PureComponent<Props> {
 
   loadMetricTypeOptions = (): Promise<Array<SelectableValue<MetricType>>> =>
     new Promise((res) => res(this.metricTypeOptions));
+
+  loadAggregatorOptions = (project: string): Promise<Array<SelectableValue<string>>> => {
+    return new Promise((res) => {
+      return fetchApiData(`${getProxyUrl()}/calyptia/v1/projects/${project}/aggregators`)
+        .then((response) =>
+          res(
+            // @ts-ignore
+            response.data
+              // @ts-ignore
+              .map((item) => {
+                this.aggregatorOptions.push({
+                  label: `${item.name} ${item.version} (${item.id})`,
+                  value: item.id,
+                });
+                return {
+                  label: `${item.name} ${item.version} (${item.id})`,
+                  value: item.id,
+                };
+              })
+          )
+        )
+        .catch((e) => {
+          console.log('>>>>>>>>>>>>>>>>>>>>>>error in loadAggregatorOptions');
+          console.log(e);
+        });
+    });
+  };
+
+  loadPluginOptions = (
+    ownerId: string,
+    metricType: MetricType,
+    query: { refId: string; refresh?: boolean }
+  ): Promise<Array<SelectableValue<string>>> => {
+    const { refId, refresh } = query;
+    return new Promise((res) => {
+      if (!refresh && this.pluginsOptions && this.pluginsOptions.length) {
+        return res(this.pluginsOptions);
+      }
+
+      let url = '';
+      if (metricType === 'aggregator') {
+        url = `${getProxyUrl()}/calyptia/v1/aggregator_metrics/${ownerId}?start=-${getQueryDuration()}h&interval=1h`;
+      } else if (metricType === 'project') {
+        url = `${getProxyUrl()}/calyptia/v1/projects/${ownerId}/metrics?start=-${getQueryDuration()}h&interval=1h`;
+      }
+
+      return fetchApiData(url)
+        .then((response) => {
+          if (metricType === 'aggregator') {
+            // @ts-ignore
+            const data: AggregatorMetrics = response.data;
+            const frameSets = createFrameSetsFromAggregatorMetrics(data, refId);
+            this.frameSets = frameSets;
+          } else if (metricType === 'project') {
+            // @ts-ignore
+            const data: ProjectMetrics = response.data;
+            const frameSets = createFrameSetsFromProjectMetrics(data, refId);
+            this.frameSets = frameSets;
+          }
+
+          return res(
+            this.frameSets
+              .filter((fs, index) => index === 0 || fs.plugin !== this.frameSets[index - 1].plugin)
+              .map((fs) => {
+                this.pluginsOptions.push({
+                  label: makePhrase(fs.plugin),
+                  value: fs.plugin,
+                });
+                return {
+                  label: makePhrase(fs.plugin),
+                  value: fs.plugin,
+                };
+              })
+          );
+        })
+        .catch((e) => {
+          console.log('>>>>>>>>>>>>>>>>>>>>>>error in loadProjectPluginOptions');
+          console.log(e);
+        });
+    });
+  };
 
   loadMetricOptions = (plugin: string): Promise<Array<SelectableValue<string>>> =>
     new Promise((res) => {
@@ -79,48 +160,16 @@ export class QueryEditor extends PureComponent<Props> {
     });
   };
 
-  loadProjectPluginOptions = (project: string, query: { refId: string }): Promise<Array<SelectableValue<string>>> => {
-    const { refId } = query;
-    return new Promise((res) => {
-      if (this.pluginsOptions && this.pluginsOptions.length) {
-        return res(this.pluginsOptions);
-      }
-
-      return fetchApiData(
-        `${getProxyUrl()}/calyptia/v1/projects/${project}/metrics?start=-${getQueryDuration()}h&interval=1h`
-      )
-        .then((response) => {
-          // @ts-ignore
-          const data: ProjectMetrics = response.data;
-          const frameSets = createFrameSetsFromProjectMetrics(data, refId);
-
-          this.frameSets = frameSets;
-          return res(
-            frameSets
-              .filter((fs, index) => index === 0 || fs.plugin !== frameSets[index - 1].plugin)
-              .map((fs) => {
-                this.pluginsOptions.push({
-                  label: makePhrase(fs.plugin),
-                  value: fs.plugin,
-                });
-                return {
-                  label: makePhrase(fs.plugin),
-                  value: fs.plugin,
-                };
-              })
-          );
-        })
-        .catch((e) => {
-          console.log('>>>>>>>>>>>>>>>>>>>>>>error in loadProjectPluginOptions');
-          console.log(e);
-        });
-    });
-  };
-
   onMetricTypeChange = (value: SelectableValue<MetricType>) => {
     const { onChange, query } = this.props;
     onChange({ ...query, metricType: value.value, project: undefined });
     this.projectOptions = [];
+  };
+
+  onAggregatorChange = (value: SelectableValue<string>) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, aggregator: value.value, plugin: undefined, metric: undefined });
+    this.pluginsOptions = [];
   };
 
   onMetricChange = (value: SelectableValue<string>) => {
@@ -144,6 +193,7 @@ export class QueryEditor extends PureComponent<Props> {
       plugin: undefined,
       metric: undefined,
     });
+    this.aggregatorOptions = [];
     this.pluginsOptions = [];
   };
 
@@ -160,12 +210,29 @@ export class QueryEditor extends PureComponent<Props> {
 
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { metricType, metric, project, plugin } = query;
+    const { metricType, aggregator, metric, project, plugin } = query;
     const { refId } = query;
 
-    const AddButton = (
+    const { range } = this.props;
+    const from = range!.from.valueOf();
+    const to = range!.to.valueOf();
+    // duration of the time range, in milliseconds.
+    let duration = to - from;
+    // convert duration to hour
+    duration = duration / (1000 * 60 * 60);
+    duration = Math.ceil(duration);
+    if (getQueryDuration() !== duration) {
+      if (metricType === 'aggregator' && aggregator) {
+        this.loadPluginOptions(aggregator, 'aggregator', { refId, refresh: true });
+      } else if (metricType === 'project' && project) {
+        this.loadPluginOptions(project, 'project', { refId, refresh: true });
+      }
+    }
+    setQueryDuration(duration);
+
+    const AddButton = ({ label }: { label: string }) => (
       <a className="gf-form-label query-part">
-        <Icon name="plus" />
+        <Icon name="plus" /> {label}
       </a>
     );
 
@@ -174,13 +241,6 @@ export class QueryEditor extends PureComponent<Props> {
     return (
       <div className="gf-form-group">
         <div className="gf-form">
-          {/* <FormField
-            labelWidth={8}
-            value={projectId || ''}
-            onChange={this.onProjectIdChange}
-            label="Project ID"
-            tooltip="Enter the project ID"
-          /> */}
           <SegmentSection label="Series">
             <SegmentAsync
               Component={
@@ -189,7 +249,7 @@ export class QueryEditor extends PureComponent<Props> {
                     value={this.metricTypeOptions.find((type) => type.value === metricType)?.label}
                   />
                 ) : (
-                  AddButton
+                  <AddButton label="Metric Type" />
                 )
               }
               value={metricType}
@@ -203,7 +263,7 @@ export class QueryEditor extends PureComponent<Props> {
                   project ? (
                     <CustomLabelComponent value={this.projectOptions.find((id) => id.value === project)?.label} />
                   ) : (
-                    AddButton
+                    <AddButton label="Project" />
                   )
                 }
                 value={project}
@@ -212,28 +272,63 @@ export class QueryEditor extends PureComponent<Props> {
                 inputMinWidth={300}
               />
             )}
+
+            {metricType === 'aggregator' && project && (
+              <SegmentAsync
+                Component={
+                  aggregator ? (
+                    <CustomLabelComponent
+                      value={this.aggregatorOptions.find((agg) => agg.value === aggregator)?.label}
+                    />
+                  ) : (
+                    <AddButton label="Aggregator" />
+                  )
+                }
+                value={aggregator}
+                loadOptions={() => this.loadAggregatorOptions(project)}
+                onChange={this.onAggregatorChange}
+                inputMinWidth={300}
+              />
+            )}
+            {metricType === 'aggregator' && project && aggregator && (
+              <SegmentAsync
+                Component={
+                  plugin ? (
+                    <CustomLabelComponent value={this.pluginsOptions.find((plug) => plug.value === plugin)?.label} />
+                  ) : (
+                    <AddButton label="Plugin" />
+                  )
+                }
+                value={plugin}
+                loadOptions={() => this.loadPluginOptions(aggregator, 'aggregator', { refId })}
+                onChange={this.onPluginChange}
+                inputMinWidth={300}
+              />
+            )}
+
             {metricType === 'project' && project && (
               <SegmentAsync
                 Component={
                   plugin ? (
                     <CustomLabelComponent value={this.pluginsOptions.find((plug) => plug.value === plugin)?.label} />
                   ) : (
-                    AddButton
+                    <AddButton label="Plugin" />
                   )
                 }
                 value={plugin}
-                loadOptions={() => this.loadProjectPluginOptions(project, { refId })}
+                loadOptions={() => this.loadPluginOptions(project, 'project', { refId })}
                 onChange={this.onPluginChange}
                 inputMinWidth={300}
               />
             )}
+
             {plugin && (
               <SegmentAsync
                 Component={
                   metric ? (
                     <CustomLabelComponent value={this.metricsOptions.find((mtrc) => mtrc.value === metric)?.label} />
                   ) : (
-                    AddButton
+                    <AddButton label="Metric" />
                   )
                 }
                 value={metric}
