@@ -13,6 +13,9 @@ import { MyQuery, MyDataSourceOptions, defaultQuery } from './types';
 import { ProjectMetrics } from 'metrics/types';
 import { fetchApiData, getQueryDuration, setProxyUrl, setQueryDuration } from 'utils';
 import { createFrameSetsFromProjectMetrics } from 'metrics/utils/project-metrics';
+import { AggregatorMetrics } from 'metrics/types/AggregatorMetrics';
+import { createFrameSetsFromAggregatorMetrics } from 'metrics/utils/aggregator-metrics';
+import { DataFrameSet } from 'metrics/types/DataFrameSet';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   proxyUrl?: string;
@@ -41,7 +44,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     const promises = options.targets.map(async (target) => {
       const query = defaults(target, defaultQuery);
-      const { metricType, metric, project, plugin } = query;
+      const { metricType, aggregator, metric, project, plugin } = query;
       // const { interval } = query;
       const { frame: cachedFrame } = query;
 
@@ -66,6 +69,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
       if (metricType === 'project' && project) {
         url = `${this.proxyUrl}/calyptia/v1/projects/${project}/metrics?start=-${duration}h&interval=1h`;
+      } else if (metricType === 'aggregator' && aggregator) {
+        url = `${this.proxyUrl}/calyptia/v1/aggregator_metrics/${aggregator}?start=-${duration}h&interval=1h`;
       }
 
       if (!url) {
@@ -74,24 +79,27 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
       return fetchApiData(url)
         .then((response) => {
-          // @ts-ignore
-          const data: ProjectMetrics = response.data;
+          let frameSets: DataFrameSet[] = [];
 
-          if (metricType === 'project') {
-            const frameSets = createFrameSetsFromProjectMetrics(data, query.refId);
-
-            let frameSet = frameSets.find((fs) => fs.plugin === plugin && fs.metric === metric);
-
-            if (!frameSet) {
-              frameSet = frameSets[0];
-            }
-
-            if (frameSet) {
-              frame = frameSet.frame;
-            }
+          if (metricType === 'aggregator') {
+            // @ts-ignore
+            const data: AggregatorMetrics = response.data;
+            frameSets = createFrameSetsFromAggregatorMetrics(data, query.refId);
+          } else if (metricType === 'project') {
+            // @ts-ignore
+            const data: ProjectMetrics = response.data;
+            frameSets = createFrameSetsFromProjectMetrics(data, query.refId);
           }
 
+          let frameSet = frameSets.find((fs) => fs.plugin === plugin && fs.metric === metric);
+          if (!frameSet) {
+            frameSet = frameSets[0];
+          }
+          if (frameSet) {
+            frame = frameSet.frame;
+          }
           query.frame = frame;
+
           return frame;
         })
         .catch((e) => {
