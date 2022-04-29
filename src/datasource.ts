@@ -11,7 +11,7 @@ import {
 
 import { MyQuery, MyDataSourceOptions, defaultQuery } from './types';
 import { ProjectMetrics } from 'metrics/types';
-import { fetchApiData, setProxyUrl } from 'utils';
+import { fetchApiData, getQueryDuration, setProxyUrl, setQueryDuration } from 'utils';
 import { createFrameSetsFromProjectMetrics } from 'metrics/utils/project-metrics';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
@@ -25,10 +25,24 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
+    let useCachedFrame = true;
+    const { range } = options;
+    const from = range!.from.valueOf();
+    const to = range!.to.valueOf();
+    // duration of the time range, in milliseconds.
+    let duration = to - from;
+    // convert duration to hour
+    duration = duration / (1000 * 60 * 60);
+    duration = Math.ceil(duration);
+    if (getQueryDuration() !== duration) {
+      useCachedFrame = false;
+    }
+    setQueryDuration(duration);
+
     const promises = options.targets.map(async (target) => {
       const query = defaults(target, defaultQuery);
       const { metricType, metric, project, plugin } = query;
-      const { duration, interval } = query;
+      // const { interval } = query;
       const { frame: cachedFrame } = query;
 
       let frame = new MutableDataFrame({
@@ -44,14 +58,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         return new Promise((res) => res(frame));
       }
 
-      if (cachedFrame) {
+      if (cachedFrame && useCachedFrame) {
         return new Promise((res) => res(cachedFrame));
       }
 
       let url: string | undefined = undefined;
 
       if (metricType === 'project' && project) {
-        url = `${this.proxyUrl}/calyptia/v1/projects/${project}/metrics?start=-${duration}h&interval=${interval}h`;
+        url = `${this.proxyUrl}/calyptia/v1/projects/${project}/metrics?start=-${duration}h&interval=1h`;
       }
 
       if (!url) {
@@ -77,6 +91,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
             }
           }
 
+          query.frame = frame;
           return frame;
         })
         .catch((e) => {
