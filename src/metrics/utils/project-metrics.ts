@@ -1,8 +1,9 @@
 import { FieldType, MutableDataFrame } from '@grafana/data';
 import { ProjectMetrics } from 'metrics/types';
+import { AgentMetrics } from 'metrics/types/AgentMetrics';
 import { DataFrameSet } from 'metrics/types/DataFrameSet';
 
-export function createFrameSetsFromProjectMetrics(data: ProjectMetrics, refId: string) {
+export function createFrameSetsFromAgentOrProjectMetrics(data: ProjectMetrics | AgentMetrics, refId: string) {
   const dataFrameSets: DataFrameSet[] = [];
 
   Object.keys(data.measurements).forEach((measurementsKey: string) => {
@@ -20,7 +21,7 @@ export function createFrameSetsFromProjectMetrics(data: ProjectMetrics, refId: s
           } else {
             const frame = new MutableDataFrame({
               refId: refId,
-              name: `${pluginsKey}.${metricsKey}`,
+              name: `${pluginsKey}.${metricsKey} (${refId})`,
               fields: [
                 { name: 'time', type: FieldType.time },
                 { name: 'value', type: FieldType.number },

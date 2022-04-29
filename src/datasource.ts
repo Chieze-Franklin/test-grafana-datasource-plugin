@@ -12,10 +12,11 @@ import {
 import { MyQuery, MyDataSourceOptions, defaultQuery } from './types';
 import { ProjectMetrics } from 'metrics/types';
 import { fetchApiData, getQueryDuration, setProxyUrl, setQueryDuration } from 'utils';
-import { createFrameSetsFromProjectMetrics } from 'metrics/utils/project-metrics';
+import { createFrameSetsFromAgentOrProjectMetrics } from 'metrics/utils/project-metrics';
 import { AggregatorMetrics } from 'metrics/types/AggregatorMetrics';
 import { createFrameSetsFromAggregatorMetrics } from 'metrics/utils/aggregator-metrics';
 import { DataFrameSet } from 'metrics/types/DataFrameSet';
+import { AgentMetrics } from 'metrics/types/AgentMetrics';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   proxyUrl?: string;
@@ -44,13 +45,13 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     const promises = options.targets.map(async (target) => {
       const query = defaults(target, defaultQuery);
-      const { metricType, aggregator, metric, project, plugin } = query;
+      const { metricType, agent, aggregator, metric, project, plugin } = query;
       // const { interval } = query;
       const { frame: cachedFrame } = query;
 
       let frame = new MutableDataFrame({
         refId: query.refId,
-        ...(plugin && metric && { name: `${plugin}.${metric}` }),
+        ...(plugin && metric && { name: `${plugin}.${metric} (${query.refId})` }),
         fields: [
           { name: 'time', type: FieldType.time },
           { name: 'value', type: FieldType.number },
@@ -67,10 +68,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
       let url: string | undefined = undefined;
 
-      if (metricType === 'project' && project) {
-        url = `${this.proxyUrl}/calyptia/v1/projects/${project}/metrics?start=-${duration}h&interval=1h`;
+      if (metricType === 'agent' && agent) {
+        url = `${this.proxyUrl}/calyptia/v1/agents/${agent}/metrics?start=-${duration}h&interval=1h`;
       } else if (metricType === 'aggregator' && aggregator) {
         url = `${this.proxyUrl}/calyptia/v1/aggregator_metrics/${aggregator}?start=-${duration}h&interval=1h`;
+      } else if (metricType === 'project' && project) {
+        url = `${this.proxyUrl}/calyptia/v1/projects/${project}/metrics?start=-${duration}h&interval=1h`;
       }
 
       if (!url) {
@@ -81,20 +84,21 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         .then((response) => {
           let frameSets: DataFrameSet[] = [];
 
-          if (metricType === 'aggregator') {
+          if (metricType === 'agent') {
+            // @ts-ignore
+            const data: AgentMetrics = response.data;
+            frameSets = createFrameSetsFromAgentOrProjectMetrics(data, query.refId);
+          } else if (metricType === 'aggregator') {
             // @ts-ignore
             const data: AggregatorMetrics = response.data;
             frameSets = createFrameSetsFromAggregatorMetrics(data, query.refId);
           } else if (metricType === 'project') {
             // @ts-ignore
             const data: ProjectMetrics = response.data;
-            frameSets = createFrameSetsFromProjectMetrics(data, query.refId);
+            frameSets = createFrameSetsFromAgentOrProjectMetrics(data, query.refId);
           }
 
           let frameSet = frameSets.find((fs) => fs.plugin === plugin && fs.metric === metric);
-          if (!frameSet) {
-            frameSet = frameSets[0];
-          }
           if (frameSet) {
             frame = frameSet.frame;
           }
