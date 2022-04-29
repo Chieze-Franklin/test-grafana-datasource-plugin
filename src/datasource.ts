@@ -12,11 +12,12 @@ import {
 import { MyQuery, MyDataSourceOptions, defaultQuery } from './types';
 import { ProjectMetrics } from 'metrics/types';
 import { fetchApiData, getQueryDuration, setProxyUrl, setQueryDuration } from 'utils';
-import { createFrameSetsFromAgentOrProjectMetrics } from 'metrics/utils/project-metrics';
+import { createFrameSetsFromMetrics } from 'metrics/utils/project-metrics';
 import { AggregatorMetrics } from 'metrics/types/AggregatorMetrics';
 import { createFrameSetsFromAggregatorMetrics } from 'metrics/utils/aggregator-metrics';
 import { DataFrameSet } from 'metrics/types/DataFrameSet';
 import { AgentMetrics } from 'metrics/types/AgentMetrics';
+import { PipelineMetrics } from 'metrics/types/PipelineMetrics';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   proxyUrl?: string;
@@ -45,7 +46,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     const promises = options.targets.map(async (target) => {
       const query = defaults(target, defaultQuery);
-      const { metricType, agent, aggregator, metric, project, plugin } = query;
+      const { metricType, agent, aggregator, metric, pipeline, project, plugin } = query;
       // const { interval } = query;
       const { frame: cachedFrame } = query;
 
@@ -72,6 +73,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         url = `${this.proxyUrl}/calyptia/v1/agents/${agent}/metrics?start=-${duration}h&interval=1h`;
       } else if (metricType === 'aggregator' && aggregator) {
         url = `${this.proxyUrl}/calyptia/v1/aggregator_metrics/${aggregator}?start=-${duration}h&interval=1h`;
+      } else if ((metricType === 'pipeline' || metricType === 'project_pipeline') && pipeline) {
+        url = `${this.proxyUrl}/calyptia/v1/pipeline_metrics/${pipeline}?start=-${duration}h&interval=1h`;
       } else if (metricType === 'project' && project) {
         url = `${this.proxyUrl}/calyptia/v1/projects/${project}/metrics?start=-${duration}h&interval=1h`;
       }
@@ -84,18 +87,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         .then((response) => {
           let frameSets: DataFrameSet[] = [];
 
-          if (metricType === 'agent') {
-            // @ts-ignore
-            const data: AgentMetrics = response.data;
-            frameSets = createFrameSetsFromAgentOrProjectMetrics(data, query.refId);
-          } else if (metricType === 'aggregator') {
+          if (metricType === 'aggregator') {
             // @ts-ignore
             const data: AggregatorMetrics = response.data;
             frameSets = createFrameSetsFromAggregatorMetrics(data, query.refId);
-          } else if (metricType === 'project') {
+          } else {
             // @ts-ignore
-            const data: ProjectMetrics = response.data;
-            frameSets = createFrameSetsFromAgentOrProjectMetrics(data, query.refId);
+            const data: AgentMetrics | PipelineMetrics | ProjectMetrics = response.data;
+            frameSets = createFrameSetsFromMetrics(data, query.refId);
           }
 
           let frameSet = frameSets.find((fs) => fs.plugin === plugin && fs.metric === metric);

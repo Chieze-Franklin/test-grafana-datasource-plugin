@@ -3,7 +3,7 @@ import { ProjectMetrics } from 'metrics/types';
 import { AgentMetrics } from 'metrics/types/AgentMetrics';
 import { DataFrameSet } from 'metrics/types/DataFrameSet';
 
-export function createFrameSetsFromAgentOrProjectMetrics(data: ProjectMetrics | AgentMetrics, refId: string) {
+export function createFrameSetsFromMetrics(data: ProjectMetrics | AgentMetrics, refId: string) {
   const dataFrameSets: DataFrameSet[] = [];
 
   Object.keys(data.measurements).forEach((measurementsKey: string) => {

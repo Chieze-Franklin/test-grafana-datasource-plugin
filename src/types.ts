@@ -15,7 +15,7 @@ export interface MyQuery extends DataQuery {
 
 export const defaultQuery: Partial<MyQuery> = {};
 
-export type MetricType = 'agent' | 'aggregator' | 'pipeline' | 'project';
+export type MetricType = 'agent' | 'aggregator' | 'pipeline' | 'project_pipeline' | 'project';
 
 /**
  * These are options configured for each DataSource instance

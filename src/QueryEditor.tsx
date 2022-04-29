@@ -6,11 +6,12 @@ import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MetricType, MyDataSourceOptions, MyQuery } from './types';
 import { fetchApiData, getProxyUrl, getQueryDuration, makePhrase, setQueryDuration } from 'utils';
-import { createFrameSetsFromAgentOrProjectMetrics } from 'metrics/utils/project-metrics';
+import { createFrameSetsFromMetrics } from 'metrics/utils/project-metrics';
 import { DataFrameSet } from 'metrics/types/DataFrameSet';
 import { AggregatorMetrics } from 'metrics/types/AggregatorMetrics';
 import { createFrameSetsFromAggregatorMetrics } from 'metrics/utils/aggregator-metrics';
 import { AgentMetrics } from 'metrics/types/AgentMetrics';
+import { PipelineMetrics } from 'metrics/types/PipelineMetrics';
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
@@ -20,7 +21,8 @@ export class QueryEditor extends PureComponent<Props> {
   metricTypeOptions: Array<SelectableValue<MetricType>> = [
     { label: 'Agent', value: 'agent', description: 'get metrics from an agent' },
     { label: 'Aggregator', value: 'aggregator', description: 'get metrics from an aggregator' },
-    { label: 'Pipeline', value: 'pipeline', description: 'get metrics from a pipeline' },
+    { label: 'Aggregator Pipeline', value: 'pipeline', description: 'get metrics from an aggregator pipeline' },
+    { label: 'Project Pipeline', value: 'project_pipeline', description: 'get metrics from a project pipeline' },
     { label: 'Project', value: 'project', description: 'get metrics from a project' },
   ];
 
@@ -29,6 +31,8 @@ export class QueryEditor extends PureComponent<Props> {
   aggregatorOptions: Array<SelectableValue<string>> = [];
 
   metricsOptions: Array<SelectableValue<string>> = [];
+
+  pipelineOptions: Array<SelectableValue<string>> = [];
 
   projectOptions: Array<SelectableValue<string>> = [];
 
@@ -91,6 +95,39 @@ export class QueryEditor extends PureComponent<Props> {
     });
   };
 
+  loadPipelineOptions = (owner: string, metricType: MetricType): Promise<Array<SelectableValue<string>>> => {
+    let url = '';
+    if (metricType === 'aggregator') {
+      url = `${getProxyUrl()}/calyptia/v1/aggregators/${owner}/pipelines`;
+    } else {
+      url = `${getProxyUrl()}/calyptia/v1/projects/${owner}/pipelines`;
+    }
+    return new Promise((res) => {
+      return fetchApiData(url)
+        .then((response) =>
+          res(
+            // @ts-ignore
+            response.data
+              // @ts-ignore
+              .map((item) => {
+                this.pipelineOptions.push({
+                  label: item.name,
+                  value: item.id,
+                });
+                return {
+                  label: item.name,
+                  value: item.id,
+                };
+              })
+          )
+        )
+        .catch((e) => {
+          console.log('>>>>>>>>>>>>>>>>>>>>>>error in loadPipelineOptions');
+          console.log(e);
+        });
+    });
+  };
+
   loadPluginOptions = (
     ownerId: string,
     metricType: MetricType,
@@ -107,26 +144,23 @@ export class QueryEditor extends PureComponent<Props> {
         url = `${getProxyUrl()}/calyptia/v1/agents/${ownerId}/metrics?start=-${getQueryDuration()}h&interval=1h`;
       } else if (metricType === 'aggregator') {
         url = `${getProxyUrl()}/calyptia/v1/aggregator_metrics/${ownerId}?start=-${getQueryDuration()}h&interval=1h`;
+      } else if (metricType === 'pipeline' || metricType === 'project_pipeline') {
+        url = `${getProxyUrl()}/calyptia/v1/pipeline_metrics/${ownerId}?start=-${getQueryDuration()}h&interval=1h`;
       } else if (metricType === 'project') {
         url = `${getProxyUrl()}/calyptia/v1/projects/${ownerId}/metrics?start=-${getQueryDuration()}h&interval=1h`;
       }
 
       return fetchApiData(url)
         .then((response) => {
-          if (metricType === 'agent') {
-            // @ts-ignore
-            const data: AgentMetrics = response.data;
-            const frameSets = createFrameSetsFromAgentOrProjectMetrics(data, refId);
-            this.frameSets = frameSets;
-          } else if (metricType === 'aggregator') {
+          if (metricType === 'aggregator') {
             // @ts-ignore
             const data: AggregatorMetrics = response.data;
             const frameSets = createFrameSetsFromAggregatorMetrics(data, refId);
             this.frameSets = frameSets;
-          } else if (metricType === 'project') {
+          } else {
             // @ts-ignore
-            const data: ProjectMetrics = response.data;
-            const frameSets = createFrameSetsFromAgentOrProjectMetrics(data, refId);
+            const data: AgentMetrics | PipelineMetrics | ProjectMetrics = response.data;
+            const frameSets = createFrameSetsFromMetrics(data, refId);
             this.frameSets = frameSets;
           }
 
@@ -225,6 +259,12 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   };
 
+  onPipelineChange = (value: SelectableValue<string>) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, pipeline: value.value, plugin: undefined });
+    this.pluginsOptions = [];
+  };
+
   onProjectChange = (value: SelectableValue<string>) => {
     const { onChange, query } = this.props;
     onChange({
@@ -254,7 +294,7 @@ export class QueryEditor extends PureComponent<Props> {
 
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { metricType, agent, aggregator, metric, project, plugin } = query;
+    const { metricType, agent, aggregator, metric, pipeline, project, plugin } = query;
     const { refId } = query;
 
     const { range } = this.props;
@@ -270,6 +310,8 @@ export class QueryEditor extends PureComponent<Props> {
         this.loadPluginOptions(agent, 'agent', { refId, refresh: true });
       } else if (metricType === 'aggregator' && aggregator) {
         this.loadPluginOptions(aggregator, 'aggregator', { refId, refresh: true });
+      } else if ((metricType === 'pipeline' || metricType === 'project_pipeline') && pipeline) {
+        this.loadPluginOptions(pipeline, 'pipeline', { refId, refresh: true });
       } else if (metricType === 'project' && project) {
         this.loadPluginOptions(project, 'project', { refId, refresh: true });
       }
@@ -350,7 +392,7 @@ export class QueryEditor extends PureComponent<Props> {
               />
             )}
 
-            {metricType === 'aggregator' && project && (
+            {(metricType === 'aggregator' || metricType === 'pipeline') && project && (
               <SegmentAsync
                 Component={
                   aggregator ? (
@@ -378,6 +420,52 @@ export class QueryEditor extends PureComponent<Props> {
                 }
                 value={plugin}
                 loadOptions={() => this.loadPluginOptions(aggregator, 'aggregator', { refId })}
+                onChange={this.onPluginChange}
+                inputMinWidth={300}
+              />
+            )}
+
+            {metricType === 'pipeline' && project && aggregator && (
+              <SegmentAsync
+                Component={
+                  pipeline ? (
+                    <CustomLabelComponent value={this.pipelineOptions.find((pipe) => pipe.value === pipeline)?.label} />
+                  ) : (
+                    <AddButton label="Pipeline" />
+                  )
+                }
+                value={pipeline}
+                loadOptions={() => this.loadPipelineOptions(aggregator, 'aggregator')}
+                onChange={this.onPipelineChange}
+                inputMinWidth={300}
+              />
+            )}
+            {metricType === 'project_pipeline' && project && (
+              <SegmentAsync
+                Component={
+                  pipeline ? (
+                    <CustomLabelComponent value={this.pipelineOptions.find((pipe) => pipe.value === pipeline)?.label} />
+                  ) : (
+                    <AddButton label="Pipeline" />
+                  )
+                }
+                value={pipeline}
+                loadOptions={() => this.loadPipelineOptions(project, 'project')}
+                onChange={this.onPipelineChange}
+                inputMinWidth={300}
+              />
+            )}
+            {(metricType === 'pipeline' || metricType === 'project_pipeline') && pipeline && (
+              <SegmentAsync
+                Component={
+                  plugin ? (
+                    <CustomLabelComponent value={this.pluginsOptions.find((plug) => plug.value === plugin)?.label} />
+                  ) : (
+                    <AddButton label="Plugin" />
+                  )
+                }
+                value={plugin}
+                loadOptions={() => this.loadPluginOptions(pipeline, 'pipeline', { refId })}
                 onChange={this.onPluginChange}
                 inputMinWidth={300}
               />
