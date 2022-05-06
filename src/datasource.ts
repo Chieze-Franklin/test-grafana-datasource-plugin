@@ -20,6 +20,7 @@ import { AgentMetrics } from 'metrics/types/AgentMetrics';
 import { PipelineMetrics } from 'metrics/types/PipelineMetrics';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
+  annotations = {};
   proxyUrl?: string;
 
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
