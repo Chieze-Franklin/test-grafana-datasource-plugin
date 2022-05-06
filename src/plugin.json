@@ -3,18 +3,24 @@
   "type": "datasource",
   "name": "Calyptia Metrics",
   "id": "calyptia-metrics-datasource",
+  "annotations": true,
   "metrics": true,
-  "routes": [{
-    "path": "calyptia",
-    "url": "https://cloud-api.calyptia.com",
-    "headers": [{
-      "name": "Accept",
-      "content": "application/json"
-    },{
-      "name": "Authorization",
-      "content": "Bearer {{ .SecureJsonData.accessToken }}"
-    }]
-  }],
+  "routes": [
+    {
+      "path": "calyptia",
+      "url": "https://cloud-api.calyptia.com",
+      "headers": [
+        {
+          "name": "Accept",
+          "content": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "content": "Bearer {{ .SecureJsonData.accessToken }}"
+        }
+      ]
+    }
+  ],
   "info": {
     "description": "Calyptia metrics datasource",
     "author": {
